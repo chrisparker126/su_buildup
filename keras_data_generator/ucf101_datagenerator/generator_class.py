@@ -1,3 +1,4 @@
+from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import keras
 import cv2
@@ -7,7 +8,8 @@ import random
 
 class DataGenerator(keras.utils.Sequence):
     'Generate UCF 101 data for keras'
-    def __init__(self, list_IDs, labels, data_dir, batch_size=64, dim=(224,224), n_channels=3, n_classes=101, shuffle=True):        
+    def __init__(self, list_IDs, labels, data_dir, batch_size=64, dim=(224,224), n_channels=3, n_classes=101, shuffle=True, \
+                 validation=False):        
         'Initialisation'
         self.data_dir = data_dir
         self.dim = dim
@@ -17,6 +19,16 @@ class DataGenerator(keras.utils.Sequence):
         self.n_channels = n_channels
         self.shuffle = shuffle 
         self.n_classes = n_classes
+        
+        if validation :
+            self.data_gen = ImageDataGenerator(rescale=1./255, \
+                                              samplewise_center=True, samplewise_std_normalization=True)
+        else :
+            self.data_gen = ImageDataGenerator(rescale=1./255,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True, samplewise_center=True, samplewise_std_normalization=True)
+        
         self.on_epoch_end()
     
     def  __len__(self):
@@ -43,7 +55,7 @@ class DataGenerator(keras.utils.Sequence):
     
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples' 
-        X = np.empty((self.batch_size, *self.dim,self.n_channels))
+        X = np.empty((self.batch_size, *self.dim,self.n_channels), dtype=np.float32)
         y = np.empty((self.batch_size), dtype=int)
         
         # Generate data 
@@ -51,6 +63,11 @@ class DataGenerator(keras.utils.Sequence):
             X[i,] = self.__data_load(ID)            
             y[i] = self.labels[ID]-1
             
+        X = self.data_gen.standardize(X)
+        
+        for i in range(i, X.shape[0]):
+            X[i,] = self.data_gen.random_transform(X[i,])
+        
         return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
     
     def __data_load(self, ID):
@@ -61,4 +78,5 @@ class DataGenerator(keras.utils.Sequence):
         file = file_dir + '/frame' + f'{frame:06}' + '.jpg'
         img = cv2.imread(file)
         img = cv2.resize(img, self.dim) 
+        img = cv2.normalize(img, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         return img
