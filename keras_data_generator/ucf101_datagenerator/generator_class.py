@@ -80,3 +80,49 @@ class DataGenerator(keras.utils.Sequence):
         img = cv2.resize(img, self.dim) 
         img = cv2.normalize(img, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         return img
+    
+    def get_all_frames_random_video(self):
+        'select all frames for a randomly selected video' 
+        index = random.randint(0,31)
+        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+        
+        # find list of ids
+        list_IDs_temp = [self.list_IDs[k] for k in indexes]
+        ID = list_IDs_temp[0]
+        
+        file_dir = self.data_dir + "/jpegs_256/" + ID.rstrip('.avi')
+        n_frames = len([name for name in os.listdir(file_dir) if name.endswith('.jpg')])
+        X = np.empty((n_frames, *self.dim,self.n_channels), dtype=np.float32)
+        y = self.labels[ID]-1
+        
+        # Generate data 
+        for i in range(1,n_frames):
+            X[i,] = self.__data_load_all_frames(file_dir, i)   
+            
+        X = self.data_gen.standardize(X)        
+        
+        return X, y
+    
+    def __data_load_all_frames(self, file_dir, frame):
+        # select random frame 
+        file = file_dir + '/frame' + f'{frame:06}' + '.jpg'
+        img = cv2.imread(file)
+        img = cv2.resize(img, self.dim) 
+        #img = cv2.normalize(img, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        return img
+    
+    def get_all_frames_for_video_id(self, ID):
+        'select all frames for a randomly selected video' 
+        
+        file_dir = self.data_dir + "/jpegs_256/" + ID.rstrip('.avi')
+        n_frames = len([name for name in os.listdir(file_dir) if name.endswith('.jpg')])
+        X = np.empty((n_frames, *self.dim,self.n_channels), dtype=np.float32)
+        y = self.labels[ID]-1
+        
+        # Generate data 
+        for i in range(1,n_frames):
+            X[i,] = self.__data_load_all_frames(file_dir, i)   
+            
+        X = self.data_gen.standardize(X)        
+        
+        return X, y
